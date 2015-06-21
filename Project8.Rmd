@@ -1,0 +1,91 @@
+---
+title: "Practical-Machine-Learning-Project"
+output: html_document
+---
+```{r}
+library(caret)
+library(randomForest)
+```
+
+ From the basic to creat the model which includes setting the working directory
+ Loading the data into the console from the respective files
+```{r}
+
+setwd("E:/R-language/Practices/8part(Machine learning)/Project")
+
+pmltrain <- read.csv("pml-training.csv",na.string=c("NA",""))
+
+dim(pmltrain)
+str(pmltrain)
+
+```
+
+##Data Cleaning
+Here we can see that datahas 160 variable and most of them contains NA so Discarding the columns which have values NAs
+
+```{r}
+
+NAs <- apply(pmltrain, 2, function(x) { sum(is.na(x)) })
+
+pmltrain_valid<-pmltrain[,which(NAs==0)]
+
+dim(pmltrain_valid)
+```
+Also removed the colums "timestamp,x column,username,new window"" because they are not sensor values so the resulting data is as below
+```{r}
+removeIndex <- grep("timestamp|X|user_name|new_window", names(pmltrain_valid))
+pmltrain_valid_rl <- pmltrain_valid[, -removeIndex]
+
+dim(pmltrain_valid_rl)
+```
+we are left with only 54 variables now futher creating the subsets of data as train and test 
+
+```{r}
+
+Intrain <-createDataPartition(y=pmltrain_valid_rl$classe,p=0.2,list=FALSE)
+train<-pmltrain_valid_rl[Intrain,]
+test<-pmltrain_valid_rl[-Intrain,]
+```
+
+##cross validation
+Applied cross validation using 10-fold cross validation
+```{r}
+#Configuration the train control for cross validation
+cV <- trainControl(method="cv",number = 4)
+
+#Fit the model using Random Forest
+modFit<- train(train$classe~.,data=train,method="rf",trControl=cV
+               ,prox=TRUE,allowParallel=TRUE)
+#modFit
+print(modFit)
+print(modFit$finalModel)
+
+```
+##Predictions on the testing dataset
+
+```{r}
+#loading test data
+pmltest <- read.csv("pml-testing.csv",na.string=c("NA",""))
+
+#taking columns which are present in train data
+test_rl<-pmltest[ ,which(names(pmltest) %in% names(train))]
+
+#Run the prediction #Result
+#apply random forest model to test set
+pred<-predict(modFit,test_rl)
+pred
+
+# Utility function provided by the instructor
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(pred)
+```
+We apply the randomForest model to the 20 given test set for the predictions. The results were all correct.
+
+
